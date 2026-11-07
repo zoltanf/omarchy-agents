@@ -5,6 +5,8 @@ stock `omarchy.agents`. It is Omarchy's own Agents panel (usage, rate limits
 and prepaid balances for your AI subscriptions), with a forecast added to the
 limit meters.
 
+![Claude Code meters with forecast lines](preview.png)
+
 The stock meters show how much of a window you have used, but not whether you
 will run out before it resets. 35% of a weekly limit is fine with one day gone
 and a problem with six days gone.

@@ -61,5 +61,16 @@ spend) out of it.
   `limit`, `limit_remaining`, `limit_reset`; key from OPENROUTER_API_KEY or
   opencode's auth.json). The collector writes `resetsAt: ""`, so no forecast
   line on it.
+- `collectors.py` removed (2026-11-07): the clone copied it, but nothing
+  loads it. The `/usr/bin/omarchy-agent-usage-*` collectors import
+  `$OMARCHY_PATH/shell/plugins/agents/collectors.py` (package `omarchy`),
+  and the widget only reads their JSON in `~/.local/state/omarchy/agents/
+  usage/`. README.omarchy.md still mentions it "beside this README"
+  (upstream text, left verbatim). Risk: an Omarchy update that changes the
+  record format; merge the new stock `Panel.qml` against the first commit.
+- `preview.png` (2026-11-07, marketplace card + README): crop of the Claude
+  Code rows (Session, Weekly, Fable Weekly) from a real screenshot, with the
+  plan label ("Max 5x") painted over in the panel background. No token
+  counts, balances or spend. Redo the same way; never commit the full panel.
 - Not ours: `assets/claude-light.svg` "Cannot open" warnings in the journal;
   the stock plugin lacks that file too.
