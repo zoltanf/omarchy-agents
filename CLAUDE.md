@@ -36,5 +36,20 @@ spend) out of it.
   since reverted; OpenRouter's key limit without a line.
 - Screenshots: the panel opens on the monitor whose bar has focus; with the
   external monitor focused it opened on eDP-1 only on the second try.
+- Line width (2026-11-07): at the laptop's 1.25 scale a 2 px line is 2.5
+  device px, so lines rendered 2 or 3 px wide depending on position. Now
+  sized in device pixels (2 px wide, dashes `round(thickness × dpr)`) and x
+  snapped to the device grid. The ratio must come from
+  `QsWindow.window.devicePixelRatio` (1.25); `Screen.devicePixelRatio`
+  reports 2 there (that gave 1 px lines). Verified by pixel count: all three
+  lines 2 px, dashes 5 px, gaps 3 px.
+- Change 3: row titles wrap to two lines (`compactTitle`: WordWrap,
+  maximumLineCount 2) instead of eliding; OpenRouter's "Monthly key limit"
+  was cut to "Monthly key li…". Verified live.
+- OpenRouter "Monthly key limit" = the credit limit set on the API key the
+  collector uses (`/usr/bin/omarchy-agent-usage-openrouter`, `/api/v1/key`:
+  `limit`, `limit_remaining`, `limit_reset`; key from OPENROUTER_API_KEY or
+  opencode's auth.json). The collector writes `resetsAt: ""`, so no forecast
+  line on it.
 - Not ours: `assets/claude-light.svg` "Cannot open" warnings in the journal;
   the stock plugin lacks that file too.

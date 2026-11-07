@@ -2034,6 +2034,10 @@ Panel {
       color: root.foreground
       font.family: root.fontFamily
       font.pixelSize: Style.font.bodySmall
+      // A long title ("Monthly key limit") wraps to a second line instead of
+      // being cut off; the row grows to fit and the meter stays centered.
+      wrapMode: Text.WordWrap
+      maximumLineCount: 2
       elide: Text.ElideRight
     }
 
@@ -2126,16 +2130,22 @@ Panel {
 
     // Red dashed line where this window lands at its reset at the current
     // rate (projectedPercent); pinned to the end when that passes 100%. An
-    // odd number of dashes puts the middle one on the track.
+    // odd number of dashes puts the middle one on the track. Sized and placed
+    // in whole device pixels: at a fractional scale (1.25) a 2 px line is
+    // 2.5 device px and rendered 2 or 3 wide depending on where it lands.
+    // The window's ratio is the real one; Screen.devicePixelRatio says 2 at
+    // a 1.25 scale.
     Column {
       id: projectionTick
       visible: meter.projection > 0
-      readonly property real dash: Math.max(3, Math.round(meter.thickness))
-      width: Math.max(2, Math.round(meter.thickness * 0.5))
-      spacing: Math.max(2, Math.round(meter.thickness * 0.5))
+      readonly property real dpr: QsWindow.window && QsWindow.window.devicePixelRatio > 0 ? QsWindow.window.devicePixelRatio : 1
+      readonly property int dashPx: Math.max(3, Math.round(meter.thickness * dpr))
+      readonly property real dash: dashPx / dpr
+      width: 2 / dpr
+      spacing: Math.max(2, Math.round(dashPx * 0.5)) / dpr
       anchors.verticalCenter: meterTrack.verticalCenter
       readonly property real along: root.clamp(meterTrack.width * root.clamp(meter.projection, 0, 1) - width / 2, 0, meterTrack.width - width)
-      x: LayoutMirroring.enabled ? meterTrack.width - width - along : along
+      x: Math.round((LayoutMirroring.enabled ? meterTrack.width - width - along : along) * dpr) / dpr
 
       Repeater {
         model: 3
