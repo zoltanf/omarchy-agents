@@ -10,9 +10,10 @@ will run out before it resets. 35% of a weekly limit is fine with one day gone
 and a problem with six days gone.
 
 - **Forecast line:** each limit with a time window and a reset time (Session,
-  Weekly, Monthly) gets a red dashed line where its usage lands at the reset
+  Weekly, Monthly) gets a dotted line where its usage lands at the reset
   if you keep the average rate since the window opened (used ÷ share of the
-  window elapsed). Past 100%, the line sits at the end of the bar. It stays
+  window elapsed). The line is drawn in the text color up to a 50% forecast
+  and turns gradually red from there, fully red at 100%. Past 100%, the line sits at the end of the bar. It stays
   hidden for the first 5% of a window, where a single prompt swings it.
   Balances and limits without a reset time get no line.
 - **Hover:** a meter's tooltip adds the number, for example

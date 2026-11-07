@@ -16,9 +16,9 @@ spend) out of it.
   built-in id), then `grim -o eDP-1`.
 - The first commit is the clone verbatim, so `git diff <first-commit>` shows
   every change and newer upstream versions can be merged against it.
-- Change 1: a red dashed vertical line (3 dashes of `thickness` px with
-  half-thickness gaps, about 16 px; 5 dashes was too tall; Column of
-  Rectangles; theme `urgent` = the theme's red) on each limit-window
+- Change 1: a dotted vertical line (4 dots of 2×2 device px with 2 px
+  gaps, 14 device px ≈ 11 px tall; Column of Rectangles; color see "Color"
+  below) on each limit-window
   meter, where the window lands at its reset if use keeps the average rate
   since the window opened: `used × span / elapsed` (`projectedPercent` in
   `Panel.qml`, `projection` on `Meter`). Pinned to the end of the bar above
@@ -43,6 +43,16 @@ spend) out of it.
   `QsWindow.window.devicePixelRatio` (1.25); `Screen.devicePixelRatio`
   reports 2 there (that gave 1 px lines). Verified by pixel count: all three
   lines 2 px, dashes 5 px, gaps 3 px.
+- Dots (2026-11-07): the user found the dashes (3 × 5 px, 21 device px
+  tall) too big and too long; replaced by 4 small dots, two thirds of the
+  height. y snapped to the device grid like x. Verified by pixel count: dots
+  2×2, gaps 2, 14 px on all three meters.
+- Color (2026-11-07): the dots blend from `foreground` (black in a light
+  theme) to `urgent` as the forecast goes from 50% to 100% (`tint` on
+  `projectionTick`, `mix()` helper); fully red at 100% and above. Started
+  at 60%; the user lowered it to 50%. Verified on the 50% ramp: 42% black
+  (29,29,31), 73% about halfway (107,39,31); on the 60% ramp with a
+  temporary +0.35 offset (reverted) 108% was full red (200,50,30).
 - Change 3: row titles wrap to two lines (`compactTitle`: WordWrap,
   maximumLineCount 2) instead of eliding; OpenRouter's "Monthly key limit"
   was cut to "Monthly key li…". Verified live.

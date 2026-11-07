@@ -220,6 +220,7 @@ Panel {
 
   function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)) }
   function alpha(c, a) { return Qt.rgba(c.r, c.g, c.b, a) }
+  function mix(c1, c2, t) { return Qt.rgba(c1.r + (c2.r - c1.r) * t, c1.g + (c2.g - c1.g) * t, c1.b + (c2.b - c1.b) * t, c1.a + (c2.a - c1.a) * t) }
 
   // A provider's accounts, when it has any. The list arrives as a sequence
   // rather than a JS array once it has passed through a model, so it's
@@ -2128,31 +2129,32 @@ Panel {
       }
     }
 
-    // Red dashed line where this window lands at its reset at the current
-    // rate (projectedPercent); pinned to the end when that passes 100%. An
-    // odd number of dashes puts the middle one on the track. Sized and placed
-    // in whole device pixels: at a fractional scale (1.25) a 2 px line is
-    // 2.5 device px and rendered 2 or 3 wide depending on where it lands.
-    // The window's ratio is the real one; Screen.devicePixelRatio says 2 at
-    // a 1.25 scale.
+    // Dotted line where this window lands at its reset at the current rate
+    // (projectedPercent); pinned to the end when that passes 100%. Drawn in
+    // the foreground color up to a 50% forecast, then blending toward the
+    // theme's red, fully red at 100% and above. Four
+    // 2 px dots with 2 px gaps, about 11 px tall. Sized and placed in whole
+    // device pixels: at a fractional scale (1.25) a 2 px line is 2.5 device
+    // px and rendered 2 or 3 wide depending on where it lands. The window's
+    // ratio is the real one; Screen.devicePixelRatio says 2 at a 1.25 scale.
     Column {
       id: projectionTick
       visible: meter.projection > 0
       readonly property real dpr: QsWindow.window && QsWindow.window.devicePixelRatio > 0 ? QsWindow.window.devicePixelRatio : 1
-      readonly property int dashPx: Math.max(3, Math.round(meter.thickness * dpr))
-      readonly property real dash: dashPx / dpr
-      width: 2 / dpr
-      spacing: Math.max(2, Math.round(dashPx * 0.5)) / dpr
-      anchors.verticalCenter: meterTrack.verticalCenter
+      readonly property real dot: 2 / dpr
+      readonly property color tint: root.mix(root.foreground, root.urgent, root.clamp((meter.projection - 0.5) / 0.5, 0, 1))
+      width: dot
+      spacing: dot
+      y: Math.round((meterTrack.height - height) / 2 * dpr) / dpr
       readonly property real along: root.clamp(meterTrack.width * root.clamp(meter.projection, 0, 1) - width / 2, 0, meterTrack.width - width)
       x: Math.round((LayoutMirroring.enabled ? meterTrack.width - width - along : along) * dpr) / dpr
 
       Repeater {
-        model: 3
+        model: 4
         Rectangle {
-          width: projectionTick.width
-          height: projectionTick.dash
-          color: root.urgent
+          width: projectionTick.dot
+          height: projectionTick.dot
+          color: projectionTick.tint
         }
       }
     }
