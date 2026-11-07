@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "id": "zoltanf.agents",
-  "name": "My Agents",
+  "name": "Agents & Forecast",
   "version": "1.0.0",
-  "author": "Omarchy",
+  "author": "zoltanf (based on Omarchy's agents widget)",
   "license": "MIT",
-  "description": "Usage, limits, pace, and prepaid balances for every AI agent and provider in a native Omarchy bar panel.",
+  "description": "Usage, limits, pace, and prepaid balances for every AI agent and provider, with a forecast of where each time-window limit lands at its reset.",
   "kinds": [
     "bar-widget"
   ],
@@ -14,7 +14,7 @@
     "barWidget": "Panel.qml"
   },
   "barWidget": {
-    "displayName": "My Agents",
+    "displayName": "Agents & Forecast",
     "description": "One bar icon and one panel: rate-limit meters with pace, today, the last week, and the all-time model breakdown for every subscription.",
     "category": "AI",
     "aliases": [
