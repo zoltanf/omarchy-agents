@@ -535,8 +535,20 @@ Panel {
     return {
       title: String(title || "") !== "" ? String(title) : windowTitle(label),
       percent: expired ? 0 : Number(percent),
-      resetAt: expired ? "" : String(resetAt || "")
+      resetAt: expired ? "" : String(resetAt || ""),
+      projected: expired ? -1 : projectedPercent(Number(percent), reset, windowSpanMs(title) || windowSpanMs(label))
     }
+  }
+
+  // Where the window ends up at its reset if use keeps the average rate it
+  // has had since the window opened: used / share of the window elapsed.
+  // -1 without a reset time or a known window length, and during the first
+  // 5% of the window, where one prompt swings the estimate wildly.
+  function projectedPercent(percent, resetMs, spanMs) {
+    if (!(percent > 0) || !isFinite(resetMs) || !(spanMs > 0)) return -1
+    var elapsed = spanMs - (resetMs - root.nowMs)
+    if (elapsed < spanMs * 0.05 || elapsed > spanMs) return -1
+    return percent * spanMs / elapsed
   }
 
   function limitWindows(p) {
@@ -551,35 +563,31 @@ Panel {
     return out
   }
 
-  // A model-scoped window ("Fable Weekly") is its own allowance, but it runs
-  // on the same clock as the window it's named for, so it's shown attached to
-  // that row rather than as a row of its own. One with nothing to attach to
-  // still gets its own row.
+  // A model-scoped window ("Fable Weekly") is its own allowance on the same
+  // clock as the window it's named for. Upstream attaches it to that row as a
+  // marker; this fork gives it its own row (displayWindows).
   function scopedPart(title) {
     var match = String(title || "").match(/^(.+) (Session|Weekly|Monthly)$/)
     return match ? { model: match[1], window: match[2] } : null
   }
 
+  // Model-scoped rows go right after the window they share a clock with.
   function displayWindows(p) {
     var windows = limitWindows(p)
     var out = []
-    var byTitle = {}
     for (var i = 0; i < windows.length; i++) {
-      if (scopedPart(windows[i].title)) continue
       windows[i].scoped = []
-      out.push(windows[i])
-      byTitle[windows[i].title] = windows[i]
+      if (!scopedPart(windows[i].title)) out.push(windows[i])
     }
     for (var j = 0; j < windows.length; j++) {
       var part = scopedPart(windows[j].title)
       if (!part) continue
-      var base = byTitle[part.window]
-      if (base) {
-        base.scoped.push({ title: part.model, percent: windows[j].percent, resetAt: windows[j].resetAt })
-      } else {
-        windows[j].scoped = []
-        out.push(windows[j])
+      var at = out.length
+      for (var k = 0; k < out.length; k++) {
+        var other = scopedPart(out[k].title)
+        if (out[k].title === part.window || (other && other.window === part.window)) at = k + 1
       }
+      out.splice(at, 0, windows[j])
     }
     return out
   }
@@ -2004,6 +2012,8 @@ Panel {
           lines.push(compact.resetMs > 0
             ? Commons.I18n.t("agents.windowUsedResets").arg(windowName).arg(used).arg(root.formatDuration(compact.resetMs))
             : Commons.I18n.t("agents.windowUsed").arg(windowName).arg(used))
+          if (compact.window.projected > 0)
+            lines.push("On pace for %1% at reset".arg(Commons.I18n.formatNumber(Math.round(compact.window.projected * 100))))
         }
         if (compact.stale)
           lines.push(compact.fetchedAt > 0 && root.nowMs - compact.fetchedAt > 60000
@@ -2035,6 +2045,7 @@ Panel {
       value: compact.window ? compact.window.percent : -1
       alarming: compact.alarming
       markers: compact.scoped
+      projection: compact.window && compact.window.projected !== undefined ? compact.window.projected : -1
     }
 
     // Sized to the widest time left ("19h 40m"), so every meter ends in the
@@ -2071,6 +2082,8 @@ Panel {
 
     // Other allowances on the same clock, drawn as ticks across the track.
     property var markers: []
+    // Projected share at the window's reset (1 = 100%), or -1 for none.
+    property real projection: -1
 
     implicitHeight: thickness
 
@@ -2108,6 +2121,29 @@ Panel {
         readonly property real along: root.clamp(meterTrack.width * root.clamp(Number(modelData.percent), 0, 1) - width / 2, 0, meterTrack.width - width)
         x: LayoutMirroring.enabled ? meterTrack.width - width - along : along
         color: meter.alarming ? root.urgent : root.foreground
+      }
+    }
+
+    // Red dashed line where this window lands at its reset at the current
+    // rate (projectedPercent); pinned to the end when that passes 100%. An
+    // odd number of dashes puts the middle one on the track.
+    Column {
+      id: projectionTick
+      visible: meter.projection > 0
+      readonly property real dash: Math.max(3, Math.round(meter.thickness))
+      width: Math.max(2, Math.round(meter.thickness * 0.5))
+      spacing: Math.max(2, Math.round(meter.thickness * 0.5))
+      anchors.verticalCenter: meterTrack.verticalCenter
+      readonly property real along: root.clamp(meterTrack.width * root.clamp(meter.projection, 0, 1) - width / 2, 0, meterTrack.width - width)
+      x: LayoutMirroring.enabled ? meterTrack.width - width - along : along
+
+      Repeater {
+        model: 3
+        Rectangle {
+          width: projectionTick.width
+          height: projectionTick.dash
+          color: root.urgent
+        }
       }
     }
   }
