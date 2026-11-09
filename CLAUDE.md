@@ -28,6 +28,34 @@ spend) out of it.
   swings it. Not on the balance bar. OpenRouter's "Monthly key limit" has
   no `resetsAt`, so no tick. The row tooltip adds "On pace for N% at reset"
   (English only, no i18n key), which shows how far past 100% it goes.
+- Change 4 (2026-11-07): two more tooltip lines (English only, like "On
+  pace"). `runOutText`: when the forecast passes 100%, "Full by <time>, <d h>
+  before reset" (time to full = `(1 − used) × elapsed / used`; weekday added
+  unless today; Qt's narrow no-break space before AM/PM replaced by a space,
+  the monospace font drew "2:36AM"). `dailyAllowanceText`: Weekly/Monthly
+  only (`spanMs` ≥ 7 d, now on each window object), "N% a day left to stay
+  under 100%" = `(1 − used) / days to reset`, hidden in the last day.
+  Verified live: Weekly and Fable Weekly per-day values match the math; with
+  usage temporarily doubled in `runOutText` (reverted) a Full-by line showed
+  the computed time; Session shows neither line. The today-only time format
+  was not seen live.
+- Change 5 (2026-11-08): `todayLeftText`, above the per-day line, Weekly/
+  Monthly only: "N% left today to stay under 100%" = even-pace target at the
+  next local midnight (`elapsed at midnight / span`, capped at 100%) − used;
+  hidden below 0.05%. No state saved. The user chose this over "today's
+  share" (save the % at the first reading after midnight, subtract usage
+  since), knowing it can read more than the per-day line because unused
+  earlier days count toward today. `shareText` formats both lines. Verified
+  live 2026-11-08 on Weekly and Fable Weekly (both lines match the math);
+  with used +30% (reverted) the line hid.
+- Per-day line wording (2026-11-08): the user asked for the day count, so
+  it reads "N% a day for D days to stay under 100%" (D = days to reset, one
+  decimal). Verified live on Fable Weekly (matches the math).
+- Hover testing: `hyprctl dispatch` takes Lua on Hyprland 0.56
+  (`hyprctl dispatch 'hl.dsp.cursor.move({x=1950,y=1334})'`, layout coords),
+  but a warp sends no motion to the panel, so tooltips neither appear nor
+  follow; reopening the panel under the cursor didn't help either. Use a
+  temporary forced `visible:` on the row's PanelToolTip, then revert.
 - Change 2: model-scoped windows ("Fable Weekly") get their own row and bar
   (with their own forecast), right after the window they share a clock with
   (`displayWindows`). Upstream drew them as a black marker on that row.

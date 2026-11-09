@@ -533,11 +533,13 @@ Panel {
   function limitWindow(label, percent, resetAt, title) {
     var reset = new Date(String(resetAt || "")).getTime()
     var expired = isFinite(reset) && reset <= root.nowMs
+    var span = windowSpanMs(title) || windowSpanMs(label)
     return {
       title: String(title || "") !== "" ? String(title) : windowTitle(label),
       percent: expired ? 0 : Number(percent),
       resetAt: expired ? "" : String(resetAt || ""),
-      projected: expired ? -1 : projectedPercent(Number(percent), reset, windowSpanMs(title) || windowSpanMs(label))
+      spanMs: span,
+      projected: expired ? -1 : projectedPercent(Number(percent), reset, span)
     }
   }
 
@@ -550,6 +552,53 @@ Panel {
     var elapsed = spanMs - (resetMs - root.nowMs)
     if (elapsed < spanMs * 0.05 || elapsed > spanMs) return -1
     return percent * spanMs / elapsed
+  }
+
+  // Tooltip line for a window whose forecast passes 100%: when it fills up
+  // at the same average rate, and how long before its reset that is.
+  // Today's time alone, another day's with the weekday.
+  function runOutText(w, resetMs) {
+    if (!w || !(w.projected > 1) || !(w.percent > 0) || w.percent >= 1 || !(resetMs > 0)) return ""
+    var elapsed = w.spanMs - resetMs
+    var toFull = (1 - w.percent) * elapsed / w.percent
+    var at = new Date(root.nowMs + toFull)
+    var locale = Qt.locale(Commons.I18n.formatLocale)
+    // The US format puts a narrow no-break space before AM/PM, which the
+    // shell's monospace font draws with almost no width.
+    var time = at.toLocaleTimeString(locale, Locale.ShortFormat).replace(/\u202f/g, " ")
+    if (at.toDateString() !== new Date(root.nowMs).toDateString()) time = at.toLocaleString(locale, "ddd") + " " + time
+    return "Full by %1, %2 before reset".arg(time).arg(formatDuration(resetMs - toFull))
+  }
+
+  // Tooltip line for a Weekly or Monthly window: how much of it can go each
+  // remaining day and still end under 100%, with the days it covers. Not in
+  // the last day, where a per-day share would read larger than what is left.
+  function dailyAllowanceText(w, resetMs) {
+    var day = 24 * 3600 * 1000
+    if (!w || !(w.spanMs >= 7 * day) || !(w.percent >= 0) || w.percent >= 1 || !(resetMs >= day)) return ""
+    var days = resetMs / day
+    return "%1% a day for %2 days to stay under 100%"
+      .arg(shareText((1 - w.percent) / days * 100)).arg(Commons.I18n.formatNumber(days, 1))
+  }
+
+  // Tooltip line for a Weekly or Monthly window: how much more can go before
+  // midnight and still be on an even pace to 100% at the reset. The pace runs
+  // from the window's start, so days that used less count toward today and
+  // this can read more than the per-day line. Hidden at 0% or below.
+  function todayLeftText(w, resetMs) {
+    var day = 24 * 3600 * 1000
+    if (!w || !(w.spanMs >= 7 * day) || !(w.percent >= 0) || w.percent >= 1 || !(resetMs > 0)) return ""
+    var midnight = new Date(root.nowMs)
+    midnight.setHours(24, 0, 0, 0)
+    var elapsed = w.spanMs - resetMs + (midnight.getTime() - root.nowMs)
+    var left = (Math.min(1, elapsed / w.spanMs) - w.percent) * 100
+    if (!(left >= 0.05)) return ""
+    return "%1% left today to stay under 100%".arg(shareText(left))
+  }
+
+  // A share in percent: one decimal below 1%, whole numbers above.
+  function shareText(p) {
+    return p < 1 ? Commons.I18n.formatNumber(p, 1) : Commons.I18n.formatNumber(Math.round(p))
   }
 
   function limitWindows(p) {
@@ -2015,6 +2064,12 @@ Panel {
             : Commons.I18n.t("agents.windowUsed").arg(windowName).arg(used))
           if (compact.window.projected > 0)
             lines.push("On pace for %1% at reset".arg(Commons.I18n.formatNumber(Math.round(compact.window.projected * 100))))
+          var runOut = root.runOutText(compact.window, compact.resetMs)
+          if (runOut !== "") lines.push(runOut)
+          var todayLeft = root.todayLeftText(compact.window, compact.resetMs)
+          if (todayLeft !== "") lines.push(todayLeft)
+          var allowance = root.dailyAllowanceText(compact.window, compact.resetMs)
+          if (allowance !== "") lines.push(allowance)
         }
         if (compact.stale)
           lines.push(compact.fetchedAt > 0 && root.nowMs - compact.fetchedAt > 60000

@@ -19,7 +19,14 @@ and a problem with six days gone.
   hidden for the first 5% of a window, where a single prompt swings it.
   Balances and limits without a reset time get no line.
 - **Hover:** a meter's tooltip adds the number, for example
-  `On pace for 140% at reset`.
+  `On pace for 140% at reset`. When that passes 100%, it also says when the
+  limit fills up, for example `Full by Mon 2:38 AM, 2d 5h before reset`.
+  Weekly and Monthly limits also show how much more can go before midnight
+  while staying on an even pace to 100% at the reset, for example
+  `27% left today to stay under 100%` (hidden at 0% or below). The pace
+  counts from the start of the window, so days that used less add to today.
+  Below that is how much is left per day until the reset, for example
+  `24% a day for 2.4 days to stay under 100%` (not in the last day).
 - **Model limits as their own bars:** a model-scoped limit such as Claude's
   "Fable Weekly" gets its own row, bar and forecast, right under the window
   it shares a clock with. The stock widget draws it as a small marker on that
