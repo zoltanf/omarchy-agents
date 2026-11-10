@@ -71,6 +71,13 @@ spend) out of it.
   600, valid JSON, no leftover temp file; an existing 0644 snapshot became
   600 on the next sync. Existing sync folders keep their mode on purpose
   (a user's Syncthing/Dropbox folder).
+- Change 7 (2026-11-10): the row tooltip's reset line ("%1: %2% used ·
+  resets in %3", stock i18n key `agents.windowUsedResets`) gets the clock
+  time after the duration: `%3` = "10h 7m (Wed 7:59 AM)", so every language
+  keeps its own sentence. `clockText()` (shared with `runOutText`): today's
+  time alone, the next 6 days with the weekday, later "MMM d, time" (Monthly).
+  Verified live on Weekly and Fable Weekly (Tue 9:52 PM → "Wed 7:59 AM");
+  the today-only and date formats were not seen live.
 - Change 2: model-scoped windows ("Fable Weekly") get their own row and bar
   (with their own forecast), right after the window they share a clock with
   (`displayWindows`). Upstream drew them as a black marker on that row.

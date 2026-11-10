@@ -556,18 +556,27 @@ Panel {
 
   // Tooltip line for a window whose forecast passes 100%: when it fills up
   // at the same average rate, and how long before its reset that is.
-  // Today's time alone, another day's with the weekday.
   function runOutText(w, resetMs) {
     if (!w || !(w.projected > 1) || !(w.percent > 0) || w.percent >= 1 || !(resetMs > 0)) return ""
     var elapsed = w.spanMs - resetMs
     var toFull = (1 - w.percent) * elapsed / w.percent
-    var at = new Date(root.nowMs + toFull)
+    return "Full by %1, %2 before reset".arg(clockText(root.nowMs + toFull)).arg(formatDuration(resetMs - toFull))
+  }
+
+  // A moment as a clock time: today's time alone, the next six days' with the
+  // weekday, later ones with the date (a Monthly reset can be weeks away).
+  function clockText(ms) {
+    var at = new Date(ms)
     var locale = Qt.locale(Commons.I18n.formatLocale)
     // The US format puts a narrow no-break space before AM/PM, which the
     // shell's monospace font draws with almost no width.
     var time = at.toLocaleTimeString(locale, Locale.ShortFormat).replace(/\u202f/g, " ")
-    if (at.toDateString() !== new Date(root.nowMs).toDateString()) time = at.toLocaleString(locale, "ddd") + " " + time
-    return "Full by %1, %2 before reset".arg(time).arg(formatDuration(resetMs - toFull))
+    var today = new Date(root.nowMs)
+    today.setHours(0, 0, 0, 0)
+    var days = Math.round((new Date(at.getFullYear(), at.getMonth(), at.getDate()).getTime() - today.getTime()) / 86400000)
+    if (days === 0) return time
+    if (days > 0 && days < 7) return at.toLocaleString(locale, "ddd") + " " + time
+    return at.toLocaleString(locale, "MMM d") + ", " + time
   }
 
   // Tooltip line for a Weekly or Monthly window: how much of it can go each
@@ -2060,7 +2069,7 @@ Panel {
           var windowName = root.windowDisplayTitle(compact.window.title)
           var used = Commons.I18n.formatNumber(Math.round(compact.window.percent * 100))
           lines.push(compact.resetMs > 0
-            ? Commons.I18n.t("agents.windowUsedResets").arg(windowName).arg(used).arg(root.formatDuration(compact.resetMs))
+            ? Commons.I18n.t("agents.windowUsedResets").arg(windowName).arg(used).arg(root.formatDuration(compact.resetMs) + " (" + root.clockText(root.nowMs + compact.resetMs) + ")")
             : Commons.I18n.t("agents.windowUsed").arg(windowName).arg(used))
           if (compact.window.projected > 0)
             lines.push("On pace for %1% at reset".arg(Commons.I18n.formatNumber(Math.round(compact.window.projected * 100))))

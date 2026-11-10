@@ -18,7 +18,9 @@ and a problem with six days gone.
   and turns gradually red from there, fully red at 100%. Past 100%, the line sits at the end of the bar. It stays
   hidden for the first 5% of a window, where a single prompt swings it.
   Balances and limits without a reset time get no line.
-- **Hover:** a meter's tooltip adds the number, for example
+- **Hover:** the reset line in a meter's tooltip adds the clock time, for
+  example `resets in 2h 49m (3:15 PM)` (weekday added for another day, the
+  date a week or more out). The tooltip also adds the forecast, for example
   `On pace for 140% at reset`. When that passes 100%, it also says when the
   limit fills up, for example `Full by Mon 2:38 AM, 2d 5h before reset`.
   Weekly and Monthly limits also show how much more can go before midnight
