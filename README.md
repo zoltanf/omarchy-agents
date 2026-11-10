@@ -31,6 +31,12 @@ and a problem with six days gone.
   "Fable Weekly" gets its own row, bar and forecast, right under the window
   it shares a clock with. The stock widget draws it as a small marker on that
   window's bar.
+- **Private sync snapshot:** with sync on (`syncMode`, see
+  [README.omarchy.md](README.omarchy.md)), this machine's usage snapshot is
+  readable by you only (mode 600), and so are the folders the widget creates
+  for it (700). The stock widget leaves both readable by other local
+  accounts at the usual umask (022). A sync folder that already exists keeps
+  its mode.
 
 Everything else works as in the stock widget; its documentation is in
 [README.omarchy.md](README.omarchy.md).

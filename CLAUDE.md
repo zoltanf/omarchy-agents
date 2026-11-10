@@ -56,6 +56,21 @@ spend) out of it.
   but a warp sends no motion to the panel, so tooltips neither appear nor
   follow; reopening the panel under the cursor didn't help either. Use a
   temporary forced `visible:` on the row's PanelToolTip, then revert.
+- Change 6 (2026-11-10, marketplace review #14317, Low at `4e1666c`): the
+  sync snapshot (stock `Main.qml`, `syncSnapshotFile` FileView) was written
+  0644 and `mkdir -p` made 0755 folders under umask 022. `runSync` now runs
+  `bash -c 'umask 077 && mkdir -p -- "$0" && touch -- "$1" && chmod 600 --
+  "$1"'` before the write; the FileView's atomic write (QSaveFile) keeps an
+  existing file's mode. `syncPreparedPath` holds the path that step
+  prepared; if the settings change the path before the write, the write is
+  skipped and a new run scheduled (else FileView would `mkpath` a 0755
+  folder and QSaveFile create a 0644 file; Fable review). Only `runSync` and
+  `writeSyncSnapshot` differ from stock in `Main.qml`.
+  Verified live with `syncMode On` + `syncDir` in a scratch folder (keys
+  removed afterwards, shell.json byte-identical): new folders 700, snapshot
+  600, valid JSON, no leftover temp file; an existing 0644 snapshot became
+  600 on the next sync. Existing sync folders keep their mode on purpose
+  (a user's Syncthing/Dropbox folder).
 - Change 2: model-scoped windows ("Fable Weekly") get their own row and bar
   (with their own forecast), right after the window they share a clock with
   (`displayWindows`). Upstream drew them as a black marker on that row.

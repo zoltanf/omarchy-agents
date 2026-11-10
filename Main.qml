@@ -390,6 +390,7 @@ Item {
   property int syncRevision: 0
   property bool syncRunning: false
   property bool syncRequestedWhileRunning: false
+  property string syncPreparedPath: ""
   property string syncStatusText: ""
   property double aggregateUpdatedAtMs: aggregateData && aggregateData.updatedAtMs ? Number(aggregateData.updatedAtMs) : 0
 
@@ -495,13 +496,25 @@ Item {
 
     syncRequestedWhileRunning = false
     syncStatusText = ""
-    syncMkdirProcess.command = ["mkdir", "-p", root.syncEffectiveDir]
+    // The snapshot holds private usage history. Folders made here are
+    // owner-only, and the snapshot is 0600 before the first write: the
+    // FileView's atomic write keeps the mode of an existing file.
+    syncPreparedPath = root.syncSnapshotPath
+    syncMkdirProcess.command = ["bash", "-c",
+      "umask 077 && mkdir -p -- \"$0\" && touch -- \"$1\" && chmod 600 -- \"$1\"",
+      root.syncEffectiveDir, syncPreparedPath]
     syncMkdirProcess.running = true
   }
 
   function writeSyncSnapshot() {
     if (!syncConfigured()) {
       finishSyncRun()
+      return
+    }
+    // The path changed while it was being prepared: prepare the new one first.
+    if (root.syncSnapshotPath !== syncPreparedPath) {
+      finishSyncRun()
+      scheduleSync()
       return
     }
     syncSnapshotFile.setText(JSON.stringify(localSnapshot(), null, 2) + "\n")
