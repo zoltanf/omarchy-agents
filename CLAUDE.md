@@ -9,7 +9,7 @@ spend) out of it.
 
 ## State (2026-11-07)
 
-- Also installed on `gmbp` (Garage MacBook, 2026-11-14): a **plain copy** (not a symlink, at the user's request) of `~/Work/omarchy-agents` in `~/.config/omarchy/plugins/zoltanf.agents`; changes reach it only by copying again (`rsync -a --exclude __pycache__`). It replaces `omarchy.agents` in the bar's right section.
+- Also installed on `gmbp` (Garage MacBook, 2026-11-14): a **plain copy** (not a symlink, at the user's request) of what was then `~/Work/omarchy-agents` (moved to `~/Development/omarchy-plugins/` on 2026-11-23, outside Insync, so a re-copy no longer arrives through Drive) in `~/.config/omarchy/plugins/zoltanf.agents`; changes reach it only by copying again (`rsync -a --exclude __pycache__`). It replaces `omarchy.agents` in the bar's right section.
 - Installed as a **symlink** `~/.config/omarchy/plugins/zoltanf.agents` →
   this checkout, in place of `omarchy.agents` (the clone switched the bar
   entry). Apply edits with `omarchy restart shell`; open the panel for a
@@ -79,6 +79,26 @@ spend) out of it.
   time alone, the next 6 days with the weekday, later "MMM d, time" (Monthly).
   Verified live on Weekly and Fable Weekly (Tue 9:52 PM → "Wed 7:59 AM");
   the today-only and date formats were not seen live.
+- Change 8 (2026-11-23, marketplace review #14317, second Low at `252c8d2`):
+  another account that can rename entries in the sync folder could swap a
+  0666 file in after `chmod 600`, and QSaveFile copies that mode. Change 6's
+  prepare step and the `syncSnapshotFile` FileView are gone: `runSync` starts
+  `syncWriteProcess` (bash, script in `syncWriteScript`) and pipes the JSON in
+  on stdin (argv is readable by other accounts in /proc). The script makes a
+  `mktemp -d` folder `.agents-sync.XXXXXX` in the sync folder, `cd`s in and
+  checks the working directory itself (owner `$EUID`, no group/other bits;
+  setgid allowed), creates `snapshot`, `chmod 600` before any data (a default
+  ACL overrides umask; chmod sets the ACL mask to none), writes, `mv -fT` over
+  the target, removes leftovers by relative name, `rmdir`. Exit 2 = mkdir
+  failed (stock i18n string), 3 = write failed (plain English string, no
+  stock key). A first version (mktemp file + write by path) still had the
+  swap race; an Opus security review found three more (default ACL, cleanup
+  `rm` by path after `cd /`, setgid folders rejected), all fixed and tested
+  in a scratch folder (planted 0666 file, swapped folder, setgid, default
+  ACL with `u:nobody:rw`) and live (sync to a scratch folder, keys removed
+  afterwards, shell.json identical). Not fixed, from stock: the scan step
+  `cat`s every `*.json` in the folder, so a FIFO planted there can hang the
+  scan (sync stops), and planted files are merged into the totals.
 - Change 2: model-scoped windows ("Fable Weekly") get their own row and bar
   (with their own forecast), right after the window they share a clock with
   (`displayWindows`). Upstream drew them as a black marker on that row.

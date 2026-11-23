@@ -390,7 +390,6 @@ Item {
   property int syncRevision: 0
   property bool syncRunning: false
   property bool syncRequestedWhileRunning: false
-  property string syncPreparedPath: ""
   property string syncStatusText: ""
   property double aggregateUpdatedAtMs: aggregateData && aggregateData.updatedAtMs ? Number(aggregateData.updatedAtMs) : 0
 
@@ -406,17 +405,37 @@ Item {
     onTriggered: root.runSync()
   }
 
+  // Writes the snapshot it reads on stdin. The snapshot holds private usage
+  // history, so it must never land in a file another account could have
+  // prepared or swapped in. Everything is written inside a fresh private
+  // directory (mktemp -d, 0700) in the sync folder. After cd, the check runs on
+  // the working directory itself, not on its path: if another account renamed
+  // ours and planted its own under the same name, the owner or mode differs and
+  // nothing is written. Nobody else can add or swap entries in a 0700
+  // directory we own, and the file then moves into place by rename. The file
+  // is chmod 600 before any data goes in: a default ACL on the sync folder
+  // overrides the umask, and chmod sets the ACL mask to none. Group and other
+  // bits are checked rather than the exact mode, so a setgid folder works.
+  // Leftovers are removed by relative name, only inside the verified folder.
+  // Exit 2: the folder could not be made; 3: the write failed.
+  readonly property string syncWriteScript: "umask 077; mkdir -p -- \"$0\" || exit 2; "
+    + "d=$(mktemp -d -- \"$0/.agents-sync.XXXXXX\") || exit 3; s=3; "
+    + "if cd -- \"$d\" && [[ $(stat -c %u .) == \"$EUID\" ]] && (( (8#$(stat -c %a .) & 8#77) == 0 )); then "
+    + ": > snapshot && chmod 600 snapshot && cat >> snapshot && mv -fT -- snapshot \"$1\" && s=0; rm -f snapshot; fi; "
+    + "cd / && rmdir -- \"$d\" 2>/dev/null; exit $s"
+
   Process {
-    id: syncMkdirProcess
+    id: syncWriteProcess
     running: false
+    stdinEnabled: true
     onRunningChanged: root.updateSyncRunning()
     onExited: function(exitCode) {
       if (exitCode !== 0) {
-        if (root.syncConfigured()) root.syncStatusText = I18n.t("agents.syncMkdirFailed")
+        if (root.syncConfigured()) root.syncStatusText = exitCode === 2 ? I18n.t("agents.syncMkdirFailed") : "Usage sync write failed"
         root.finishSyncRun()
         return
       }
-      root.writeSyncSnapshot()
+      Qt.callLater(root.startSyncScan)
     }
   }
 
@@ -438,14 +457,6 @@ Item {
       waitForEnd: true
       onStreamFinished: if (text.trim() !== "") console.warn("agents/sync", text.trim())
     }
-  }
-
-  FileView {
-    id: syncSnapshotFile
-    path: root.syncSnapshotPath
-    watchChanges: false
-    atomicWrites: true
-    printErrors: false
   }
 
   FileView {
@@ -479,7 +490,7 @@ Item {
   }
 
   function updateSyncRunning() {
-    root.syncRunning = syncMkdirProcess.running || syncScanProcess.running
+    root.syncRunning = syncWriteProcess.running || syncScanProcess.running
   }
 
   function scheduleSync() {
@@ -496,29 +507,13 @@ Item {
 
     syncRequestedWhileRunning = false
     syncStatusText = ""
-    // The snapshot holds private usage history. Folders made here are
-    // owner-only, and the snapshot is 0600 before the first write: the
-    // FileView's atomic write keeps the mode of an existing file.
-    syncPreparedPath = root.syncSnapshotPath
-    syncMkdirProcess.command = ["bash", "-c",
-      "umask 077 && mkdir -p -- \"$0\" && touch -- \"$1\" && chmod 600 -- \"$1\"",
-      root.syncEffectiveDir, syncPreparedPath]
-    syncMkdirProcess.running = true
-  }
-
-  function writeSyncSnapshot() {
-    if (!syncConfigured()) {
-      finishSyncRun()
-      return
-    }
-    // The path changed while it was being prepared: prepare the new one first.
-    if (root.syncSnapshotPath !== syncPreparedPath) {
-      finishSyncRun()
-      scheduleSync()
-      return
-    }
-    syncSnapshotFile.setText(JSON.stringify(localSnapshot(), null, 2) + "\n")
-    Qt.callLater(root.startSyncScan)
+    // The snapshot goes through stdin, not argv: other accounts can read a
+    // process's argv in /proc. Closing stdin (stdinEnabled = false) ends cat.
+    syncWriteProcess.command = ["bash", "-c", root.syncWriteScript, root.syncEffectiveDir, root.syncSnapshotPath]
+    syncWriteProcess.stdinEnabled = true
+    syncWriteProcess.running = true
+    syncWriteProcess.write(JSON.stringify(localSnapshot(), null, 2) + "\n")
+    syncWriteProcess.stdinEnabled = false
   }
 
   function startSyncScan() {
