@@ -9,6 +9,7 @@ spend) out of it.
 
 ## State (2026-11-07)
 
+- Also installed on `gmbp` (Garage MacBook, 2026-11-14): a **plain copy** (not a symlink, at the user's request) of `~/Work/omarchy-agents` in `~/.config/omarchy/plugins/zoltanf.agents`; changes reach it only by copying again (`rsync -a --exclude __pycache__`). It replaces `omarchy.agents` in the bar's right section.
 - Installed as a **symlink** `~/.config/omarchy/plugins/zoltanf.agents` →
   this checkout, in place of `omarchy.agents` (the clone switched the bar
   entry). Apply edits with `omarchy restart shell`; open the panel for a
